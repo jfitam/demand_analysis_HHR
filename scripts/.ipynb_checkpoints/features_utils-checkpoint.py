@@ -1,5 +1,3 @@
-from sqlalchemy import create_engine
-from sqlalchemy import text
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from hijri_converter import Gregorian
@@ -7,13 +5,29 @@ import os
 import json
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.metrics import r2_score
-
 from pathlib import Path
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 ######################################################################################################################################################
+
+# get the connection string to establish connection
+def get_connection_string():
+    import streamlit as st
+    try:
+        return st.secrets["connection_string"]
+    except:
+        # Fallback to local secrets file
+        import tomllib
+        
+
+        secrets_path = os.path.join(Path(__file__).resolve().parent.parent, ".streamlit", "secrets.toml")
+        with open(secrets_path, "rb") as f:
+            secrets = tomllib.load(f)
+
+        return secrets["connection_string"]
+
+
 #function to get the data from database. this is shared by all the model files. Returns a pandas dataframe with the data fetched from the database, or taken from a saved file (if any), or None otherwise.
 def get_data():
     # establish the connection
@@ -25,10 +39,13 @@ def get_data():
     last_refreshed_day = '2025-03-31'
     fpath = os.path.join(BASE_DIR, 'data','data.csv')
     
-    conexion_string = "postgresql://postgres:BioH1cDDjm@psql-server:5432/SalesSystem?sslmode=prefer"
+    conexion_string = get_connection_string()
 
     data = None
     try:
+        from sqlalchemy import create_engine
+        from sqlalchemy import text
+        
         # pull the data. the aggregation data is per day
         engine = create_engine(conexion_string)
         conn = engine.connect()
