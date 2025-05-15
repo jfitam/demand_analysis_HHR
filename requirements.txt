@@ -1,0 +1,11 @@
+sqlalchemy
+sklearn
+pandas
+hijri_converter
+os
+sys
+json
+pathlib
+numpy
+altair
+joblib
