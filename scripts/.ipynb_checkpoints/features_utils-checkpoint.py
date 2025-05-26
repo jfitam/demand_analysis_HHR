@@ -62,11 +62,21 @@ def get_data():
                        +coalesce(no_level_standard_price,0)
                     ) as revenue_without_promotion,
                    sum(passengers_km) as passengers_km,
+                   sum(seats_km) as seats_km,
                    day_category,
                    ( 
                        (sum(intermediate_tickets) + sum(intermediate_tickets_promo))*0.3
                        + (sum(maximum_tickets) + sum(maximum_tickets_promo)) * 0.6
-                   ) / sum(total_occupancy) + 1 as price_mix_ratio
+                   ) / sum(total_occupancy) + 1 as price_mix_ratio,
+                   sum(tickets_saudi) as tickets_saudi, 
+                   sum(tickets_egyptian) as tickets_egyptian, 
+                   sum(tickets_pakistani) as tickets_pakistani, 
+                   sum(tickets_indian) as tickets_indian, 
+                   sum(tickets_yemeni) as tickets_yemeni, 
+                   sum(tickets_indonesian) as tickets_indonesian, 
+                   sum(tickets_jordanian) as tickets_jordanian, 
+                   sum("tickets_USA") as "tickets_USA", 
+                   sum(tickets_britain) as tickets_britain 
             FROM analytics.metrics_class
             WHERE train_departure_date_short <= :last_day AND corridor_name = 'MAK-MAD'
             GROUP BY corridor_name, train_year, train_week_num, train_departure_date_short, day_category
@@ -121,16 +131,34 @@ def get_features_from_file(file_name):
 
 ######################################################################################################################################################
 # function that filter a df with the saved features used by the linear regression model
+def fill_missing_features(df, model_columns):
+    #fill in any dummy column that was removed due to filter
+    for col in model_columns:
+        if col not in df.columns:
+            df[col] = 0
+    return df
+    
 def select_features_lr(df):
-    return df[get_features_from_file("features_lr.json")]
+    cols = get_features_from_file("features_lr.json")
+    df = fill_missing_features(df, cols)
+
+    return df[cols]
 
 # function that filter a df with the saved features used by arima
 def select_features_arima(df):
-    return df[get_features_from_file("exog_arima.json")]
+    cols = get_features_from_file("exog_arima.json")
+    df = fill_missing_features(df, cols)
+
+    return df[cols]
 
 # function that filter a df with the saved features used by the xgradient boosting model
 def select_features_lgbm(df):
-    return df[get_features_from_file("features_lgbm.json")]
+    cols = get_features_from_file("features_lgbm.json")
+    df = fill_missing_features(df, cols)
+
+    return df[cols]
+    
+
 
 ######################################################################################################################################################
 # create the needed features for the linear regression model
@@ -252,9 +280,9 @@ def get_features_and_dummies_lgbm(data):
     
     #create dummies for the categorization of days
     kind_date_dummies = pd.get_dummies(df_r1['day_category'], drop_first=False)
-    kind_date_dummies.drop('Weekend National Day',inplace=True, axis=1)
-    kind_date_dummies.drop('National Day',inplace=True, axis=1)
-    kind_date_dummies.drop('Post Ramadan',inplace=True, axis=1)
+    for col in ['Weekend National Day', 'National Day', 'Post Ramadan']:
+        if col in kind_date_dummies.columns:
+            kind_date_dummies.drop(col, axis=1, inplace=True)
     
     # create dummies for the days of the week
     df_r1['DayOfWeek'] = df_date.dt.dayofweek
