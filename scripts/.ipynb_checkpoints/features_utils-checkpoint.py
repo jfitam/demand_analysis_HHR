@@ -76,7 +76,9 @@ def get_data():
                    sum(tickets_indonesian) as tickets_indonesian, 
                    sum(tickets_jordanian) as tickets_jordanian, 
                    sum("tickets_USA") as "tickets_USA", 
-                   sum(tickets_britain) as tickets_britain 
+                   sum(tickets_britain) as tickets_britain,
+                   sum(residents) as residents,
+                   sum(non_residents) as non_residents
             FROM analytics.metrics_class
             WHERE train_departure_date_short <= :last_day AND corridor_name = 'MAK-MAD'
             GROUP BY corridor_name, train_year, train_week_num, train_departure_date_short, day_category
@@ -309,6 +311,21 @@ def get_features_and_dummies_lgbm(data):
 
     return df_r1, month_dummies, week_dummies, kind_date_dummies, weekday_dummies, hijri_dummies
 
+#####################################################################################################################################################
+def get_features_tft(df):
+    # same features as previous models
+    df['train_departure_date_short']
+    df['week_day'] = df['train_departure_date_short'].dt.dayofweek
+    df['week_day'] = (df['week_day']).astype("category")
+    df['train_year'] = df_r1['train_year'] - min(df_r1['train_year'])
+    df['price_ratio'] = (df_r1['revenue'] / df_r1['revenue_without_promotion']).astype(float)
+    df['price_mix_ratio'] = df_r1['price_mix_ratio'].astype(float)
+
+    # column time index for model
+    df = df.sort_values("train_departure_date_short")
+    df["time_idx"] = (df["train_departure_date_short"] - df["train_departure_date_short"].min()).dt.days
+
+    return df
 ######################################################################################################################################################
 # class to wrapp up a model and use it to predict, but calculate the expected passenger based on the current level of prices.
 # used when the model was trained with the passengers adjusted to the prices
